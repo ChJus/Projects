@@ -1,0 +1,4 @@
+- Large numbers are not type-casted from string to double with a lot of precision
+e.g., '12345678901234567890' gives '12345678901234567168'
+
+- Expression '9 9' returns 9 instead of error.

@@ -48,6 +48,7 @@ Token initToken(const char *val, Symbol ty);   // creates a token and returns to
 Token advance();                               // advances and returns tokens, used during expression parsing
 void resetGlobalVariables();                   // reset global variables to default values
 void stripTrailingZeros(char *str);            // remove trailing 0s from result when printing
+void stripTrailingZerosScientificNotation(char *str); // remove trailing 0s in result expressed in scientific notation.
 
 // Small validation functions
 bool isValidCharacter(char c);   // checks if a character is valid, used in checkExpressionValidity()
@@ -184,13 +185,24 @@ int main() {
       // This won't be reached because double value range is <1E1024
       char resultString[1024];
 
-      // Format the string to 9 d.p.
-      // Note that whole numbers and numbers that fit in less than 9 d.p. are also formatted
-      // into 9 d.p. (by adding trailing 0s)
-      sprintf(resultString, "%.9f", result);
+      if (result > 1e16 || result < -1e16 || (result > -1e-16 && result < 1e-16 && result != 0)) {
+        // If the result is bigger than 1e16 or less than -1e16,
+        // or the result is between -1e-16 and 1e-16,
+        // express the result in approximated scientific notation, as
+        // C floating-point arithmetic isn't very accurate in these ranges.
+        sprintf(resultString, "%.9e", result);
 
-      // Call a function that removes the trailing 0s.
-      stripTrailingZeros(resultString);
+        // Remove unnecessary 0s in scientific notation
+        stripTrailingZerosScientificNotation(resultString);
+      } else {
+        // Format the string to 9 d.p.
+        // Note that whole numbers and numbers that fit in less than 9 d.p. are also formatted
+        // into 9 d.p. (by adding trailing 0s)
+        sprintf(resultString, "%.9f", result);
+
+        // Call a function that removes the trailing 0s.
+        stripTrailingZeros(resultString);
+      }
 
       // Type the final result
       blue();
@@ -198,6 +210,52 @@ int main() {
       type("\n\n");
     }
   }
+}
+
+void stripTrailingZerosScientificNotation(char *str) {
+  int maxIndex = 0;
+
+  // Find stopping point (when character is 'e')
+  while (str[maxIndex] != 'e' && maxIndex + 1 < strlen(str)) {
+    maxIndex++;
+  }
+
+  // Preserve the 'e____' part (10^____) that will be concatenated afterwards.
+  char *magnitude = malloc(strlen(str));
+  strncpy(magnitude, str + maxIndex, strlen(str) - maxIndex);
+
+  // Find where the decimal point '.' is (if there is one)
+  int decimalIndex = -1;
+
+  for (int i = 0; i < strlen(str); i++) {
+    if (str[i] == '.') {
+      decimalIndex = i;
+      break;
+    }
+  }
+
+  // Iterate through the digits after the decimal.
+  // Keep checking if digits after the digit at indice are all 0.
+  // If so, then remove the 0s.
+  for (int indice = 0; indice < maxIndex; indice++) {
+    bool allAfterAreZeros = true;
+    for (int ind = indice + 1; ind < maxIndex; ind++) {
+      if (str[ind] != '0') {
+        allAfterAreZeros = false;
+      }
+    }
+    if (allAfterAreZeros) {
+      if (indice == decimalIndex) {
+        str[indice] = '\0';
+      }
+      for (int ind = indice + 1; ind < strlen(str); ind++) {
+        str[ind] = '\0';
+      }
+    }
+  }
+
+  // add e____ part back to string
+  strcat(str, magnitude);
 }
 
 // Removes trailing 0s from a string representing a number
@@ -335,6 +393,11 @@ double expression(int bindingPower) {
 
     // Evaluate binary expression
     left = led(t, left);
+  }
+
+  // Throw exception for input like '1 1'
+  if (token.type == NUMBER) {
+    error("Not expecting a number after a number (with no operator in between).");
   }
 
   // Return result to callee
@@ -682,9 +745,18 @@ void printHelpManual() {
   purple();
   type("SPECIFICATIONS\n");
   blue();
+  type(" - You can enter numbers (including decimals)\n");
   type(" - This calculator is accurate up to 9 decimal digits.\n");
   type(" - You can enter expressions that are \033[1;34mat most 1024 characters long\033[0;34m.\n");
-  type(" - You can enter numbers (including decimals)\n");
+  type(" - If the evaluated expression is:\n");
+  type("\t - Greater than 1e16\n");
+  type("\t - Less than -1e16\n");
+  type("\t - Between -1e-16 and 1e-16\n");
+  type("   The result will be expressed in scientific notation.\n\n");
+
+  purple();
+  type("SUPPORTED OPERATIONS\n");
+  blue();
   type(" - Operations supported:\n");
   type("\t  Operation      Symbol\n");
   type("\t- Addition       [+]\n");

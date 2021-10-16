@@ -73,7 +73,11 @@ public final class PrattCalculatorImproved {
           System.out.println("Error: divide by 0.");
           System.out.println("Result: NaN");
         } else {
-          System.out.println(df.format(result));
+          if (result > 1e16 || result < -1e16 || (result > -1e-16 && result < 1e-16)) {
+            System.out.printf("%.9e", result);
+          } else {
+            System.out.println(df.format(result));
+          }
         }
         System.out.println();
       } catch (Exception e) {
@@ -96,6 +100,11 @@ public final class PrattCalculatorImproved {
       token = advance();
       left = led(t, left);
     }
+
+    if (token.type == Symbol.NUMBER) {
+      throw new IllegalArgumentException("Not expecting two numbers with no operator between them.");
+    }
+
     return left;
   }
 
