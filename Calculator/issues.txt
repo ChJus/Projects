@@ -1,4 +1,19 @@
+Fixed
 - Large numbers are not type-casted from string to double with a lot of precision
-e.g., '12345678901234567890' gives '12345678901234567168'
-
+  e.g., '12345678901234567890' gives '12345678901234567168'
 - Expression '9 9' returns 9 instead of error.
+- Strings cannot have a null character in the middle
+- NaN and infinity pop up in the console
+- Imprecise results with very small/very large numbers
+-
+- Windows environment doesn't have header unistd.h
+- Factorials may be non-integers or negative
+- '3 . 4' weird occurrence of 'adjacent operands' error
+- '(1) 7' returns 1 not error.
+- Seg faults (accessing memory without permission)
+  - caused by passing local variables, etc.
+- Unknown characters keep popping up in the error message that includes user input expression
+  e.g., 'asdf;aosuhdif;oa' returns error message with: '�'
+
+Open
+1.

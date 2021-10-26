@@ -5,10 +5,15 @@
 #include <ctype.h>    // Lowercase character function tolower()
 #include <stdlib.h>   // Standard library (system(), strtod(), malloc())
 #include <math.h>     // Math library (INFINITY, isnan(), pow())
-#include <unistd.h>   // Thread sleep function (usleep())
+
+#if defined(WIN32)        // Add support for thread sleeping in Windows
+  #include <windows.h>
+#else
+  #include <unistd.h>     // Thread sleep function (usleep())
+#endif
 
 // Define enumeration containing labels for various different token types
-typedef enum {
+typedef enum Symbol {
     NUMBER,                     // Numerical values (RegExp [0-9.])
     ADD, MINUS,                 // Addition [+] and subtraction [-]
     DIVIDE, MULTIPLY,           // Division [/] and multiplication [*]
@@ -23,7 +28,7 @@ typedef enum {
 // type, and binding power. The larger the binding power, the higher the precedence the operator has.
 // Note that binding power is only assigned to operator tokens.
 // To create a token, call initToken().
-typedef struct {
+typedef struct Token {
     const char *value;
     Symbol type;
     int bindingPower;
@@ -35,7 +40,7 @@ void beep();            // Makes computer play 'beep'
 void blue();            // Change text color to blue
 void green();           // Change text color to green
 void purple();          // Change text color to purple
-void error(char *str);  // Change text color to bold red and print an error message, changes hadError to true
+void error(char *str, int index);  // Change text color to bold red and print an error message, changes hadError to true
 void type(char *str);   // Types out a message character by character
 
 // De-clutter main() method (code ported off into a method)
@@ -44,6 +49,8 @@ void printHelpManual(); // prints help manual
 // Helper functions
 char *lowercase(char *str);                    // converts string to lowercase
 double factorial(double left);                 // returns factorial of value
+double integerFactorial(double left);          // returns factorial of integer ≥0
+double spouge(double z);                       // implementation of Spouge's approximation for factorials
 Token initToken(const char *val, Symbol ty);   // creates a token and returns to callee
 Token advance();                               // advances and returns tokens, used during expression parsing
 void resetGlobalVariables();                   // reset global variables to default values
@@ -51,7 +58,7 @@ void stripTrailingZeros(char *str);            // remove trailing 0s from result
 void stripTrailingZerosScientificNotation(char *str); // remove trailing 0s in result expressed in scientific notation.
 
 // Small validation functions
-bool isValidCharacter(char c);   // checks if a character is valid, used in checkExpressionValidity()
+bool isValidCharacter(char c, int index);   // checks if a character is valid, used in checkExpressionValidity()
 bool isBlank(char *string);      // checks if a string only contains blank spaces
 bool isNumeric(char c);          // checks if character is a digit from 0 to 9
 
@@ -69,9 +76,14 @@ double expression(int bindingPower);       // evaluates expression at current bi
 double led(Token tempToken, double left);  // left-denotation - evaluates binary expressions
 double nud(Token tempToken);               // null-denotation - evaluates unary expressions
 
+
 // Global variables
 // Stores whether an error occurred
 bool hadError = false;
+
+// Stores the number of errors
+// If there are more than 5 errors, the rest are omitted.
+int numErrors = 0;
 
 // Stores the index of the start of a token
 int start = 0;
@@ -81,6 +93,9 @@ int current = 0;
 
 // Stores the index of the token that will be parsed
 int parseCurrent = 0;
+
+// Stores the index of the start of the token character in the original expression
+int parseIndex = 0;
 
 // Token array
 // Note the max is 1024 because userExp has a max of 1024, and the max number of tokens
@@ -161,7 +176,8 @@ int main() {
     tokenize(userExp);
 
     // If the user's expression doesn't have any tokens (it is empty), then ask for input again.
-    if (findNumberOfTokens(userExp) == 0) {
+    // If an error occurred during tokenization, don't try to parse it.
+    if (findNumberOfTokens(userExp) == 0 || hadError) {
       continue;
     }
 
@@ -172,42 +188,44 @@ int main() {
     // After recursing through the entire expression, the final result will be in here.
     double result = expression(0);
 
-    // If the result is ±∞, notify the user
-    if (result == INFINITY || result == -INFINITY) {
-      error("Result reached ±∞.");
-      error("Hint: this may be because of double factorials (e.g., '5!!'), exponentiation or divide by 0.");
-    } else if (isnan(result)) { // If the result is NaN, notify the user
-      error("Result is not a number.");
-      error("Hint: this may be because of divide by 0.");
-      error("Hint: this may be because result is imaginary or complex.");
-    } else if (!hadError) { // If no error occurred, then print the result up to 9 d.p.
-      // Final result string will be at most 1024 characters
-      // This won't be reached because double value range is <1E1024
-      char resultString[1024];
+    if (!hadError) {
+      // If the result is ±∞, notify the user
+      if (result == INFINITY || result == -INFINITY) {
+        error("Result reached positive/negative infinity.", -1);
+        error("Hint: this may be because of double factorials (e.g., '5!!'), exponentiation or divide by 0.", -1);
+      } else if (isnan(result)) { // If the result is NaN, notify the user
+        error("Result is not a number.", -1);
+        error("Hint: this may be because of divide by 0.", -1);
+        error("Hint: this may be because result is imaginary or complex.", -1);
+      } else { // If no error occurred, then print the result up to 9 d.p.
+        // Final result string will be at most 1024 characters
+        // This won't be reached because double value range is <1E1024
+        char resultString[1024];
 
-      if (result > 1e16 || result < -1e16 || (result > -1e-16 && result < 1e-16 && result != 0)) {
-        // If the result is bigger than 1e16 or less than -1e16,
-        // or the result is between -1e-16 and 1e-16,
-        // express the result in approximated scientific notation, as
-        // C floating-point arithmetic isn't very accurate in these ranges.
-        sprintf(resultString, "%.9e", result);
+        if (result > 1e16 || result < -1e16 || (result > -1e-16 && result < 1e-16 && result != 0)) {
+          // If the result is bigger than 1e16 or less than -1e16,
+          // or the result is between -1e-16 and 1e-16,
+          // express the result in approximated scientific notation, as
+          // C floating-point arithmetic isn't very accurate in these ranges.
+          sprintf(resultString, "%.9e", result);
 
-        // Remove unnecessary 0s in scientific notation
-        stripTrailingZerosScientificNotation(resultString);
-      } else {
-        // Format the string to 9 d.p.
-        // Note that whole numbers and numbers that fit in less than 9 d.p. are also formatted
-        // into 9 d.p. (by adding trailing 0s)
-        sprintf(resultString, "%.9f", result);
+          // Remove unnecessary 0s in scientific notation
+          stripTrailingZerosScientificNotation(resultString);
+        } else {
+          // Format the string to 9 d.p.
+          // Note that whole numbers and numbers that fit in less than 9 d.p. are also formatted
+          // into 9 d.p. (by adding trailing 0s)
+          sprintf(resultString, "%.9f", result);
 
-        // Call a function that removes the trailing 0s.
-        stripTrailingZeros(resultString);
+          // Call a function that removes the trailing 0s.
+          stripTrailingZeros(resultString);
+        }
+
+        // Type the final result
+        blue();
+        type(resultString);
+        type("\n\n");
       }
-
-      // Type the final result
-      blue();
-      type(resultString);
-      type("\n\n");
     }
   }
 }
@@ -291,7 +309,9 @@ void stripTrailingZeros(char *str) {
 // Set global variables to default values
 void resetGlobalVariables() {
   hadError = false;
+  numErrors = 0;
   parseCurrent = 0;
+  parseIndex = 0;
   current = 0;
   start = 0;
   token = initToken("", END_OF_EXPRESSION);
@@ -318,19 +338,46 @@ double led(Token tempToken, double left) {
     case FACTORIAL: // Factorials
       return factorial(left);
     default: // This should never happen, but if it does, handle the error.
-      error("Unable to parse expression.");
+      error("Unable to parse expression.", parseIndex);
       return 0;
   }
 }
 
-// Hand-implemented factorial calculator
-// Note it is iterative not recursive
-// Recursion has some overhead and also risks stack overflow.
-// Iterative is faster but less elegant.
-double factorial(double left) {
+// Performs factorial on integer values ≥0
+double integerFactorial(double left) {
   double result = 1;
   for (int i = 1; i <= left; i++) {
     result *= i;
+  }
+  return result;
+}
+
+// Implementation of Spouge's approximation of factorials
+// See https://en.wikipedia.org/wiki/Spouge%27s_approximation
+// Note: ε_a(z) was discarded, error because of discarding the term is small.
+double spouge(double z) {
+  int a = 30;
+  double result = pow(z + a, z + 0.5) * pow(M_E, -(z + a));
+  double prodValue = sqrt(2 * M_PI);
+  for (int k = 1; k <= a - 1; k++) {
+    prodValue += ((pow(-1, k - 1) / (integerFactorial(k - 1))) * pow(-k + a, k - 0.5) * pow(M_E, -k + a)) / (z + k);
+  }
+  result *= prodValue;
+  return result;
+}
+
+// Hand-implemented factorial calculator
+double factorial(double left) {
+  if (left < 0) {
+    error("Factorial is only defined for non-negative numbers.", parseIndex);
+    return 0;
+  }
+
+  double result;
+  if (floor(left) == left) {
+    result = integerFactorial(left);
+  } else {
+    result = spouge(left);
   }
   return result;
 }
@@ -347,17 +394,17 @@ double nud(Token tempToken) {
     case START_BRACKET: { // Evaluate expressions in parentheses
       double val = expression(0);
       if (tokens[parseCurrent].type != END_BRACKET) {
-        error("Expected ending bracket ')'.");
+        error("Expected ending bracket ')'.", parseIndex);
       }
       token = advance(); // consume the ')' ending parentheses
       return val; // return the result of the expression in the parentheses
     }
     case END_BRACKET: // Handles expression '()'
-      error("Unnecessary brackets: there isn't anything in the brackets.");
+      error("Unnecessary brackets: there isn't anything in the brackets.", parseIndex);
     default: { // Only happens in invalid (syntax-wise) expressions
-      char errorMessage[200];
+      char errorMessage[1024];
       sprintf(errorMessage, "Unexpected token '%s'.", tempToken.value);
-      error(errorMessage);
+      error(errorMessage, parseIndex + 1);
       return 0;
     }
   }
@@ -366,6 +413,7 @@ double nud(Token tempToken) {
 // Return the next token
 Token advance() {
   if (parseCurrent + 1 < findNumberOfTokens(userExp)) {
+    parseIndex += (int) strlen(tokens[parseCurrent + 1].value);
     return tokens[++parseCurrent];
   } else {
     // If there are no more tokens, return a token that indicates the end of the expression
@@ -381,6 +429,11 @@ double expression(int bindingPower) {
   Token t = token;
   token = advance();
 
+  // Throw exception for input like '1 1'
+  if (t.type == NUMBER && token.type == NUMBER) {
+    error("Not expecting a number after a number (with no valid operator in between).", parseIndex);
+  }
+
   // Evaluate the operand as a unary expression
   double left = nud(t);
 
@@ -393,11 +446,6 @@ double expression(int bindingPower) {
 
     // Evaluate binary expression
     left = led(t, left);
-  }
-
-  // Throw exception for input like '1 1'
-  if (token.type == NUMBER) {
-    error("Not expecting a number after a number (with no operator in between).");
   }
 
   // Return result to callee
@@ -414,9 +462,14 @@ void tokenize(char *exp) {
   while (current < strlen(exp)) {
     char c = exp[current];
     if (isNumeric(c)) { // Consume number if program reads a digit
+      if (tokens[indexToken - 1].type == END_BRACKET) { // If we have a number after ')'
+        tokens[indexToken++] = initToken("*", MULTIPLY);
+      }
+
       tokenizeNumber();
       char *sub = malloc(strlen(exp));
       strncpy(sub, exp + start, current + 1 - start);
+
       tokens[indexToken++] = initToken(sub, NUMBER);
       current++;
       start = current;
@@ -429,6 +482,9 @@ void tokenize(char *exp) {
       case '\t': // tabs are ignored
         break;
       case '(': // consume '(' as start parentheses
+        if (indexToken - 1 >= 0 && tokens[indexToken - 1].type == NUMBER) { // If we have a number before '('
+          tokens[indexToken++] = initToken("*", MULTIPLY);
+        }
         tokens[indexToken++] = initToken("(", START_BRACKET);
         break;
       case ')': // consume ')' as end parentheses
@@ -453,15 +509,15 @@ void tokenize(char *exp) {
         tokens[indexToken++] = initToken("!", FACTORIAL);
         break;
       case '.': // '.' - unexpected as we handle '.' in numbers in the tokenizeNumber() function
-        error("Error: Unexpected '.', please have digits before '.' (e.g., 0.1 instead of .1)");
-        error("       Also, numbers can only have one '.' (e.g., no 1.1.1)\n");
+        error("Error: Unexpected '.', please have digits before '.' (e.g., 0.1 instead of .1)", -1);
+        error("       Also, numbers can only have one '.' (e.g., no 1.1.1)\n", current);
         break;
       default: {
         // Unknown characters are reported (shouldn't happen as it
         // happens already in checkExpressionValidity())
-        char errorMessage[200];
+        char errorMessage[1024];
         sprintf(errorMessage, "Error: Unknown character: '%c'\n", c);
-        error(errorMessage);
+        error(errorMessage, current);
         break;
       }
     }
@@ -492,8 +548,36 @@ int findNumberOfTokens(char *exp) {
     switch (c) { // +1 for each of these characters
       // Notice the chaining of cases.
       // Each of these cases below should increment token count by 1.
-      case '(':
+      case '(': {
+        int tempCurrent = current;
+        // Ignore whitespace before
+        while (exp[tempCurrent - 1] == ' ' || exp[tempCurrent - 1] == '\t') {
+          tempCurrent--;
+        }
+        // If we have a number in front of the '(', then we will insert
+        // a multiplication operator there, so make sure to increment
+        // the token count.
+        if (tempCurrent - 1 >= 0 && isNumeric(exp[tempCurrent - 1])) {
+          numTokens += 2;
+        } else {
+          numTokens++;
+        }
+        break;
+      }
       case ')':
+        // Ignore whitespace afterwards
+        while (exp[current + 1] == ' ' || exp[current + 1] == '\t') {
+          current++;
+        }
+        // If we have a number after ')', then we will insert
+        // a multiplication operator there, so make sure to increment
+        // the token count.
+        if (current + 1 < strlen(exp) && isNumeric(exp[current + 1])) {
+          numTokens += 2;
+        } else {
+          numTokens++;
+        }
+        break;
       case '+':
       case '-':
       case '*':
@@ -617,7 +701,7 @@ void checkParenthesesMatch(char *inputString) {
   // If there are still parentheses in the string, then
   // the parentheses are unmatched, an error is thrown.
   if (!isBlank(copyOfInput)) {
-    error("Unmatched parentheses.");
+    error("Unmatched parentheses.", current);
   }
 }
 
@@ -628,12 +712,12 @@ void checkExpressionValidity(char *exp) {
     // Technically the loop can exit after one invalid character is found,
     // but we want to spot as many (valid) errors as possible before asking for input again.
     // That way, if the user is trying to fix the expression, they can fix multiple errors at once.
-    isValidCharacter(exp[index]);
+    isValidCharacter(exp[index], index);
   }
 }
 
 // Checks if a single character is valid
-bool isValidCharacter(char c) {
+bool isValidCharacter(char c, int index) {
   switch (c) {
     case '+':
     case '-':
@@ -653,9 +737,9 @@ bool isValidCharacter(char c) {
       if (isNumeric(c)) {
         return true;
       } else { // If not, throw an error
-        char errorMessage[200];
+        char errorMessage[1024];
         sprintf(errorMessage, "Invalid character: '%c' (character code: %d)\n", c, c);
-        error(errorMessage);
+        error(errorMessage, index);
         return false;
       }
   }
@@ -687,11 +771,36 @@ void beep() {
 }
 
 // Print errors in bold red and set the hadError flag on.
-void error(char *str) {
+// Additionally, mark where the error occurred in the expression.
+void error(char *str, int index) {
+  numErrors++;
+  if (numErrors == 6) {
+    printf("\033[1;31m");
+    type("Too many errors identified, please fix the ones pointed out first.\n\n");
+    return;
+  } else if (numErrors > 6) {
+    return;
+  }
   hadError = true;
   printf("\033[1;31m");
   type(str);
   type("\n");
+  if (index >= 0) {
+    type("    => ");
+    type(userExp);
+    type("\n");
+    char *point = malloc(strlen(userExp));
+    for (int indice = 0; indice < strlen(userExp); indice++) {
+      if (indice == index) {
+        point[indice] = '^';
+      } else {
+        point[indice] = ' ';
+      }
+    }
+    type("       ");
+    type(point);
+    type("\n");
+  }
 }
 
 // Return an initialized token
