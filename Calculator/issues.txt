@@ -5,7 +5,6 @@ Fixed
 - Strings cannot have a null character in the middle
 - NaN and infinity pop up in the console
 - Imprecise results with very small/very large numbers
--
 - Windows environment doesn't have header unistd.h
 - Factorials may be non-integers or negative
 - '3 . 4' weird occurrence of 'adjacent operands' error
@@ -14,6 +13,8 @@ Fixed
   - caused by passing local variables, etc.
 - Unknown characters keep popping up in the error message that includes user input expression
   e.g., 'asdf;aosuhdif;oa' returns error message with: '�'
+- 5!(4) error instead of '240'
+- 4!4 gives result of 4! instead of 4! * 4
+- Square root and cube root not working
 
 Open
-1.

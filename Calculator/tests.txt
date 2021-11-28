@@ -43,3 +43,46 @@
 (22 / 2 - 2 * 5) ^ 2 + (4 - 6 / 6) ^ 2
 (3 / 4) * (2 ^ 3 + 4 ^ 2)
 1 + 1
+4!(2)
+4(2)!
+2pi
+2exp
+pi pi
+exp exp
+2(4)!
+pi2
+sin(90)
+sin(30)
+degtorad(20)
+.
+sqrt(2)^2
+sqrt(cbrt(30))
+?
+help me please!
+exit for me please!
+log(10^14)
+ln(exp^15)
+sin(-1)
+sin(exp)
+asin(0.5)
+asin(1)
+asin(sin(140))
+sin(30)^2 + cos(30)^2
+asinh(sinh(30))
+acosh(cosh(30))
+atanh(tanh(30))
+abs(pi)
+abs(-exp)
+floor(rand)
+ceil(rand)
+0/0
+10^12345
+10^sqrt(4^2)
+degtorad(radtodeg(2))
+radtodeg(degtorad(180))
+9^0.5
+2ceil(0.8)
+asin(sin(radtodeg(pi / 4)))
+!
+asdf
+asdf!

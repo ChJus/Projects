@@ -43,3 +43,46 @@
 10
 18
 2
+48
+8
+6.283185307
+5.436563657
+9.869604401
+7.389056099
+48
+6.283185307
+1
+0.5
+0.34906585
+Error
+2
+1.76273438
+Error
+Calculator Help Manual
+Goodbye!
+14
+15
+-0.017452406
+0.047425172
+30
+90
+40
+1
+30
+30
+30
+3.141592654
+2.718281828
+0
+1
+not a number
+infinity
+10000
+2
+180
+3
+2
+45
+Unexpected token
+Unexpected identifier
+Unexpected identifier
