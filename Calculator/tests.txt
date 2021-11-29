@@ -86,3 +86,5 @@ asin(sin(radtodeg(pi / 4)))
 !
 asdf
 asdf!
+8 % 6 % 4
+8 % (6 % 4)

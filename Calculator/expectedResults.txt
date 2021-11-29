@@ -86,3 +86,5 @@ infinity
 Unexpected token
 Unexpected identifier
 Unexpected identifier
+2
+0

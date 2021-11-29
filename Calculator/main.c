@@ -181,6 +181,9 @@ int main(int argc, char **argv) {
 
     } while (evaluateExpression());
   } else {
+    // Get input from command line arguments
+    // Concatenate all arguments into a single string (as each
+    // argument is delimited by a ' ')
     for (int i = 1; i < argc; i++) {
       strcat(userExp, argv[i]);
       strcat(userExp, " ");
