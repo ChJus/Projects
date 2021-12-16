@@ -1,3 +1,6 @@
+// Justin Chen
+// Calculator (v2021.12.14)
+
 // Include libraries
 #include <stdio.h>    // I/O functions (fgets(), stdin, sprintf(), printf())
 #include <string.h>   // String functions (strcspn(), strstr(), strlen(), strncpy(), strcpy())
@@ -27,7 +30,8 @@ typedef enum Symbol {
     DIVIDE, MULTIPLY,           // Division [/] and multiplication [*]
     MODULO,                     // Modulo (%)
     POWER, FACTORIAL,           // Exponentiation [^] and factorials [!]
-    MATH_PI, MATH_E,            // π and exp
+    MATH_PI, MATH_E,            // π and e
+    EXP,                        // e^x
     RAND_NUM,                   // obtain random number
     SQRT,                       // performs square root ('sqrt')
     CBRT,                       // performs cube root ('cbrt')
@@ -40,6 +44,7 @@ typedef enum Symbol {
     ABS,                        // performs absolute value ('abs')
     DEGTORAD, RADTODEG,         // performs conversion between degrees and radians ('degtorad', 'radtodeg')
     FLOOR, CEIL, ROUND,         // performs floor, ceil and round functions ('floor', 'ceil', 'round')
+    INV,                        // performs 1/x ('inv')
     PASS_TOKEN,                 // Ignore this token space
     START_BRACKET, END_BRACKET, // Parentheses [(], [)]
     IDENTIFIER,                 // Function/constant names
@@ -155,7 +160,7 @@ int main(int argc, char **argv) {
     type("\t'clear': clear screen\n");
     type("\t'exit': exit program\n\n");
     type("Supported operations: +, -, *, /, %, ^, !, ()\n");
-    type("Supported characters: [0-9], [.], pi, exp (2.718...), and others (see help manual)\n\n");
+    type("Supported characters: [0-9], [.], pi, e (2.718...), and others (see help manual)\n\n");
 
     // Keep asking for user input until they type a message containing 'exit' or
     // forcefully terminate the program.
@@ -531,6 +536,12 @@ double nud(Token tempToken) {
     case RADTODEG: { // Radians to degrees
       return radtodeg(expression(40));
     }
+    case INV: {
+      return 1.0 / (expression(40));
+    }
+    case EXP: {
+      return exp(expression(40));
+    }
     default: { // Only happens in invalid (syntax-wise) expressions
       char errorMessage[1024];
       sprintf(errorMessage, "Unexpected token '%s'.", tempToken.value);
@@ -642,10 +653,10 @@ void tokenize(char *exp) {
         break;
       case '(': // consume '(' as start parentheses
         // If we have a number before '('
-        // Or we have a factorial term before '(' (e.g., '5!(4)')
+        // Or we have a factorial term before '(' (e.g., '5!(4)'), or we have ')'
         if (indexToken - 1 >= 0 &&
             (tokens[indexToken - 1].type == NUMBER || tokens[indexToken - 1].type == FACTORIAL ||
-             tokens[indexToken - 1].type == IDENTIFIER)) {
+             tokens[indexToken - 1].type == IDENTIFIER || tokens[indexToken - 1].type == END_BRACKET)) {
           tokens[indexToken++] = initToken("*", MULTIPLY);
         }
         tokens[indexToken++] = initToken("(", START_BRACKET);
@@ -772,7 +783,10 @@ int findNumberOfTokens(char *exp) {
         // If we have a number after ')', then we will insert
         // a multiplication operator there, so make sure to increment
         // the token count.
-        if (current + 1 < strlen(exp) && (isNumeric(exp[current + 1]) || isAlpha(exp[current + 1]))) {
+        if (current + 1 < strlen(exp) &&
+            (isNumeric(exp[current + 1]) ||
+             isAlpha(exp[current + 1]) ||
+             exp[current + 1] == '(')) {
           numTokens += 2;
         } else {
           numTokens++;
@@ -942,9 +956,9 @@ void tokenizeFunction(int index, const char *tempTokenValue) {
     // Match 'pi', which represents π
     Token t = {"pi", MATH_PI, 25};
     tokens[index] = t;
-  } else if (match(tempTokenValue, "exp")) {
+  } else if (match(tempTokenValue, "e")) {
     // Match 'exp', which matches Euler's constant
-    Token t = {"exp", MATH_E, 25};
+    Token t = {"e", MATH_E, 25};
     tokens[index] = t;
   } else if (match(tempTokenValue, "rand")) {
     Token t = {"rand", RAND_NUM, 25};
@@ -973,6 +987,8 @@ void tokenizeFunction(int index, const char *tempTokenValue) {
     else if (match(tempTokenValue, "round")) tokens[index] = initToken("round", ROUND);
     else if (match(tempTokenValue, "degtorad")) tokens[index] = initToken("degtorad", DEGTORAD);
     else if (match(tempTokenValue, "radtodeg")) tokens[index] = initToken("radtodeg", RADTODEG);
+    else if (match(tempTokenValue, "inv")) tokens[index] = initToken("inv", INV);
+    else if (match(tempTokenValue, "exp")) tokens[index] = initToken("exp", EXP);
     else { // Some random word that isn't a reserved identifier
       hadError = true;
       char errorMessage[1024];
@@ -1202,7 +1218,7 @@ void printHelpManual() {
   blue();
   type("Note: expressions like '2/3pi' will be evaluated as '(2 / 3) * pi' instead of '2 / (3 * pi)'\n");
   type(" - pi: 3.141...\n");
-  type(" - exp: 2.718...\n");
+  type(" - e: 2.718...\n");
   type(" - rand: generates a random number between 0 and 1\n");
 
   purple();
@@ -1231,6 +1247,8 @@ void printHelpManual() {
   type(" - round(arg): Performs rounding on arg.\n");
   type(" - degtorad(arg): Performs degree to radian conversion on arg.\n");
   type(" - radtodeg(arg): Performs radian to degree conversion on arg.\n");
+  type(" - inv(arg): Evaluates 1 / arg.\n");
+  type(" - exp(arg): Evaluates e ^ arg.\n");
 
   purple();
   type("\nOTHER COMMANDS\n");
@@ -1261,6 +1279,7 @@ void type(const char *str) {
     // Sleep the thread for timeInMs * 1000 microseconds
     // (1 μs = 1000 ns)
     usleep(timeInMs * 1000);
+    
     printf("%c", str[i]);
 
     // Flush it onto the console

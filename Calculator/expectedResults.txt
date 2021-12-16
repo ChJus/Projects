@@ -88,3 +88,7 @@ Unexpected identifier
 Unexpected identifier
 2
 0
+0.2
+0.00032
+48
+229.651664084

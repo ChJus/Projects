@@ -46,9 +46,9 @@
 4!(2)
 4(2)!
 2pi
-2exp
+2e
 pi pi
-exp exp
+e e
 2(4)!
 pi2
 sin(90)
@@ -63,7 +63,7 @@ exit for me please!
 log(10^14)
 ln(exp^15)
 sin(-1)
-sin(exp)
+sin(e)
 asin(0.5)
 asin(1)
 asin(sin(140))
@@ -72,7 +72,7 @@ asinh(sinh(30))
 acosh(cosh(30))
 atanh(tanh(30))
 abs(pi)
-abs(-exp)
+abs(-e)
 floor(rand)
 ceil(rand)
 0/0
@@ -88,3 +88,7 @@ asdf
 asdf!
 8 % 6 % 4
 8 % (6 % 4)
+inv(5)
+inv(5^5)
+(5 + 3) (2 + 4)
+exp(2e)

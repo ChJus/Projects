@@ -42,7 +42,7 @@ public class RunTests {
     int correct = 0;
     for (int i = start; i < tests.length; i++) {
       // Execute terminal-like command
-      Process pb = Runtime.getRuntime().exec(new String[]{"/Users/JC/CLionProjects/Calculator/cmake-build-debug-coverage/Calculator", tests[i]});
+      Process pb = Runtime.getRuntime().exec(new String[]{"/Users/JC/CLionProjects/Calculator/cmake-build-debug/Calculator", tests[i]});
 
       // Read the output of the program
       BufferedReader reader = new BufferedReader(new InputStreamReader(pb.getInputStream()));

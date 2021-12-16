@@ -16,5 +16,6 @@ Fixed
 - 5!(4) error instead of '240'
 - 4!4 gives result of 4! instead of 4! * 4
 - Square root and cube root not working
+- Expression '(2 + 3) (2 + 7)' returns 5 instead of 45
 
 Open
