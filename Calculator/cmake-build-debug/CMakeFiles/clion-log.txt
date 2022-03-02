@@ -1,4 +1,4 @@
-"/Users/JC/Library/Application Support/JetBrains/Toolbox/apps/CLion/ch-0/213.5744.254/CLion.app/Contents/bin/cmake/mac/bin/cmake" -DCMAKE_BUILD_TYPE=Debug -G "CodeBlocks - Unix Makefiles" /Users/JC/CLionProjects/Calculator
+"/Users/JC/Library/Application Support/JetBrains/Toolbox/apps/CLion/ch-0/213.6777.58/CLion.app/Contents/bin/cmake/mac/bin/cmake" -DCMAKE_BUILD_TYPE=Debug -G "CodeBlocks - Unix Makefiles" /Users/JC/CLionProjects/Calculator
 -- Configuring done
 -- Generating done
 -- Build files have been written to: /Users/JC/CLionProjects/Calculator/cmake-build-debug
